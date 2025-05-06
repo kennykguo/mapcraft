@@ -1,0 +1,132 @@
+reference point initialized at: lat=43.6662, lon=-79.393
+Reference point in load_serialized_data: lat=43.6662, lon=-79.393
+Reference point 3D (should be ~0,0,0): [0, 0, 0]
+Recalculating 3D coordinates with new reference point...
+Processing 680908 features...
+
+=== Debug Feature #0 ===
+Feature index: 0, Type: golf course, Name: Rosedale Golf Club
+Converting 63 points to 3D
+Original 2D Point: (-6.38416e+06, 4.86437e+06)
+Converted lat/lon: (43.734, -79.3922)
+Point 0 (lat,lon): 43.734, -79.3922
+Point 0 (3D): [705.727, 0, 75469.2]
+Centroid 3D: [236.314, 0, 77454.6]
+Feature height: 0 meters
+Bounding radius: 7139.41 meters
+
+=== Debug Feature #1 ===
+Feature index: 1, Type: building, Name: Bob Abate Community recreation Centre
+Building height: 5.5, Roof type: 1, Is skyscraper: No
+Converting 5 points to 3D
+Original 2D Point: (-6.38643e+06, 4.85639e+06)
+Converted lat/lon: (43.6622, -79.4204)
+Point 0 (lat,lon): 43.6622, -79.4204
+Point 0 (3D): [-21981.8, 0, -4402.94]
+Centroid 3D: [-21954.8, 2.75, -4222.24]
+Feature height: 5.5 meters
+Bounding radius: 276.169 meters
+
+=== Debug Feature #2 ===
+Feature index: 2, Type: building, Name: <noname>
+Building height: 6, Roof type: 2, Is skyscraper: No
+Converting 9 points to 3D
+Original 2D Point: (-6.38644e+06, 4.85667e+06)
+Converted lat/lon: (43.6647, -79.4206)
+Point 0 (lat,lon): 43.6647, -79.4206
+Point 0 (3D): [-22165.9, 0, -1573.69]
+Centroid 3D: [-22277.8, 3, -1498.28]
+Feature height: 6 meters
+Bounding radius: 155.834 meters
+
+=== Debug Feature #3 ===
+Feature index: 3, Type: park, Name: Christie Pits Park
+Converting 62 points to 3D
+Original 2D Point: (-6.38656e+06, 4.85679e+06)
+Converted lat/lon: (43.6658, -79.422)
+Point 0 (lat,lon): 43.6658, -79.422
+Point 0 (3D): [-23313.5, 0, -347.823]
+Centroid 3D: [-22661.8, 0, -1729.13]
+Feature height: 0.2 meters
+Bounding radius: 2415.54 meters
+
+=== Debug Feature #4 ===
+Feature index: 4, Type: building, Name: <noname>
+Building height: 7, Roof type: 1, Is skyscraper: No
+Converting 6 points to 3D
+Original 2D Point: (-6.38659e+06, 4.85673e+06)
+Converted lat/lon: (43.6653, -79.4224)
+Point 0 (lat,lon): 43.6653, -79.4224
+Point 0 (3D): [-23620.4, 0, -945.91]
+Centroid 3D: [-23623.4, 3.5, -1075.28]
+Feature height: 7 meters
+Bounding radius: 137.935 meters
+Processing 278500 street segments...
+Finished recalculating 3D coordinates:
+  680908 features processed
+  663456 buildings processed
+  0 coordinate errors detected
+  278500 street segments processed
+
+=== FIRST STREET SEGMENT (AFTER RECALCULATION) ===
+First 3D Point: 32782.5, 0, 111511
+3D Centroid: 35552.2, 0, 111637
+
+=== FIRST BUILDING (AFTER RECALCULATION) ===
+Type: building
+First 3D Point: -21981.8, 0, -4402.94
+3D Centroid: -21954.8, 2.75, -4222.24
+Height: 5.5m
+initializing renderer
+initializing 3D Renderer...
+Renderer3D - Using reference point: lat=43.6662, lon=-79.393
+Reference point 3D (should be ~0,0,0): 0, 0, 0
+phong lighting shaders initialized with enhanced texturing capabilities
+tessellation shaders initialized successfully
+water shaders initialized successfully
+Shadow mapping initialized successfully
+Terrain shaders initialized successfully
+Initialized 0 rain particles
+Particle system initialized successfully
+All shaders initialized successfully
+loading features and roads in Renderer construction:
+Loading feature data to GPU...
+Loaded 5 buildings (663451 rejected, 17452 non-buildings)
+Loading road data to GPU...
+Loaded 13 road segments
+Loading natural features...
+Loaded 1 natural features
+initializing cuda resources...
+uploading buildings to GPU...
+Buildings uploaded to GPU: 5 buildings, 106 vertices
+Uploading roads to GPU...
+Roads uploaded to GPU: 13 roads, 70 vertices
+Uploading natural features to GPU...
+Natural features uploaded to GPU: 1 features, 26 vertices
+Initializing spatial grid...
+creating spatial grid with 42 x 37 = 1554 cells
+spatial grid created successfully
+Spatial grid initialized
+CUDA resources initialized
+3D Renderer initialized successfully
+generating terrain...
+terrain generated with 48841 vertices and 96800 triangles
+loading textures...
+Generated procedural texture for: grass.jpg
+Generated procedural texture for: rock.jpg
+Generated procedural texture for: soil.jpg
+Generated procedural texture for: concrete.jpg
+Generated procedural texture for: window.jpg
+Generated procedural texture for: road.jpg
+Generated procedural texture for: tree.jpg
+Generated procedural texture for: car.jpg
+All textures loaded successfully
+generating tree meshes...
+generated 224 trees
+Generating car meshes...
+Generated 50 cars
+Initialized 0 rain particles
+Shutting down 3D Renderer...
+Cleaning up CUDA resources...
+CUDA resources cleaned up
+3D Renderer destroyed

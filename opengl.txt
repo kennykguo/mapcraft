@@ -1,0 +1,69 @@
+Application Stage (CPU): Your C++ code prepares data and gives instructions
+Vertex Processing (GPU): Transforms 3D positions to screen coordinates
+Rasterization (GPU): Converts geometric shapes to individual pixels
+Fragment Processing (GPU): Colors each pixel and applies lighting effects
+Output (Screen): The final image appears on your monitor
+
+Can you then go over exactly what each opengl function does from the ground up? assume i have no knowledge of opengl, and little knowledge about how 3d graphics work. please explain everything from first principles, and the ground up. do not leave any details
+
+Vertex Data → actual vertices
+Vertex Shader → small program runs once per shader - transform vertices from 3d world space into screen space
+Primitive Assembly → connect vertices based on draw command
+Rasterization → create geometric fragments
+Fragment Shader → runs once per fragment - determines final color of each pixel
+Per-Fragment Operations → apply tests and blending operations - depth testing, stencil testing, etc
+Screen
+
+Shaders are small programs that run on the GPU
+
+INITIALIZATION
+// create a buffer object id
+glGenBuffers(1, &bufferId);
+
+// bind buffer for use
+glBindBuffer(GL_ARRAY_BUFFER, bufferId);
+
+// copy data to gpu
+glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+
+
+SHADERS
+// create shader object
+GLuint shader = glCreateShader(GL_VERTEX_SHADER);
+
+// provide shader source code
+glShaderSource(shader, 1, &sourceCode, NULL);
+
+// compile shader
+glCompileShader(shader);
+
+// create shader program
+GLuint program = glCreateProgram();
+
+// attach shaders to program
+glAttachShader(program, vertexShader);
+glAttachShader(program, fragmentShader);
+
+// link program
+glLinkProgram(program);
+
+// use the shader program
+glUseProgram(program);
+
+
+DRAWING
+// draw arrays of vertices
+glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+// draw indexed geometry
+glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, indices);
+
+STATE MANAGEMENT
+// enable depth testing
+glEnable(GL_DEPTH_TEST);
+
+// set clear color
+glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
+
+// set viewport
+glViewport(0, 0, width, height);

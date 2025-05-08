@@ -39,82 +39,90 @@ const int MAX_ROOF_COMPLEXITY = 8;
     // draws roof if building has one
     // disables polygon offset after rendering
 void Renderer3D::draw_buildings() {
-    // allocate buffer for visible building indices
+    // skip if no buildings to draw
     if (visible_building_count <= 0) return;
-    std::vector<int> h_visible_indices(visible_building_count);
     
-    // copy visible indices from gpu
+    // get list of visible buildings from cuda
+    std::vector<int> h_visible_indices(visible_building_count);
     cuda_check(cudaMemcpy(h_visible_indices.data(), d_visible_building_indices, visible_building_count * sizeof(int), cudaMemcpyDeviceToHost), "Copy visible building indices to host");
     
-    // enable depth testing - prevents farther objects from appearing in front of near ones
-    // enable polygon offset to prevent z-fighting - nudges one surface slightly forward
+    // set opengl state for building rendering
+    // - GL_DEPTH_TEST - prevents buildings behind others from drawing over them
+    // - GL_POLYGON_OFFSET_FILL - prevents z-fighting by offsetting fragment depth
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_POLYGON_OFFSET_FILL);
     glPolygonOffset(-0.5f, -0.5f);
     
-    // use phong shader for textured buildings
-    // shaders are just programs that run on the gpu
-    // vertex shader - takes each 3d point to determine where it should be
-    // fragment shader - decides what color each pixel should be
-    // activates a shader program for rendering - contains instructions for processing vertices and pixels
+    // activate phong shader program
+    // - provides lighting model with ambient, diffuse, and specular components
+    // - handles texturing and normal mapping 
     glUseProgram(phong_shader_program);
     
-    // pre-compute view and projection matrices (used for all buildings)
+    // prepare view and projection matrices
+    // - view - transforms world coordinates to view space (camera's perspective)
+    // - projection - adds perspective distortion, converts view space to clip space
     glm::mat4 view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1024.0f/768.0f, 0.1f, 10000.0f);
     
-    // set common uniforms
-    // glGetUniformLocation - finds location of uniform variable, and used for settings
-    // glUniform3fv sends datat o uniform variable to the shader
-    // uniforms can be thought of instructions given to shader program - eg. find instruction viewPos in shader program, then execute instruction
+    // set lighting uniforms
+    // - viewPos - camera position for specular highlights calculation
+    // - lightPos - sun/light source position 
+    // - lightColor - sun/light color and intensity
     glUniform3fv(glGetUniformLocation(phong_shader_program, "viewPos"), 1, glm::value_ptr(camera_pos));
     glUniform3fv(glGetUniformLocation(phong_shader_program, "lightPos"), 1, glm::value_ptr(light_position));
     glUniform3fv(glGetUniformLocation(phong_shader_program, "lightColor"), 1, glm::value_ptr(light_color));
     
-    // bind building textures
-    // selects texture unit 0, loading it in
+    // bind building textures to texture units
+    // - GL_TEXTURE0 - concrete texture for building walls
+    // - GL_TEXTURE1 - window pattern for windows on buildings
     glActiveTexture(GL_TEXTURE0);
-    // bind speciic texture to the unit
     glBindTexture(GL_TEXTURE_2D, concrete_texture);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, window_texture);
     
-    // modified material properties for buildings
+    // set material properties
+    // - ambient - lighting received from ambient light sources
+    // - diffuse - lighting from direct light sources based on surface angle
+    // - specular - highlights from direct light sources
+    // - shininess - controls size/sharpness of specular highlights
     glUniform1f(glGetUniformLocation(phong_shader_program, "ambient"), 0.3f);
     glUniform1f(glGetUniformLocation(phong_shader_program, "diffuse"), 0.7f);
     glUniform1f(glGetUniformLocation(phong_shader_program, "specular"), 0.2f);
     glUniform1f(glGetUniformLocation(phong_shader_program, "shininess"), 8.0f);
     
-    // draw each visible building
+    // render each visible building
     for (int i = 0; i < visible_building_count; i++) {
         int building_idx = h_visible_indices[i];
-        // skip invalid indices
         if (building_idx < 0 || building_idx >= building_count) continue;
-        const building& building = buildings[building_idx]; // get the building
+        const building& building = buildings[building_idx];
         
-        // draw building walls with textures
+        // create arrays for building wall geometry
         std::vector<float> wall_vertices;
         std::vector<float> wall_normals;
         std::vector<float> wall_tex_coords;
         
-        // make sure height is at least 5.0 meters for visibility
+        // ensure minimum height for visibility
         float wall_height = std::max(5.0f, building.height);
         
-        // scale texture based on building size (approx width)
+        // calculate building width for texture scaling
         float building_width = 0;
         for (int j = 0; j < building.vertex_count; j++) {
-            int next_idx = (j + 1) % building.vertex_count; // get next vertex index, wrapping around at the end
+            int next_idx = (j + 1) % building.vertex_count;
             float segment_length = glm::distance(
-                glm::vec2(building.vertices[j].x, building.vertices[j].z), // current vertex in xz plane
-                glm::vec2(building.vertices[next_idx].x, building.vertices[next_idx].z) // next vertex in xz plane
+                glm::vec2(building.vertices[j].x, building.vertices[j].z),
+                glm::vec2(building.vertices[next_idx].x, building.vertices[next_idx].z)
             );
-            building_width += segment_length; // accumulate segment length
+            building_width += segment_length;
         }
-        building_width /= building.vertex_count; // compute average segment length (approximate width)
+        building_width /= building.vertex_count;
 
-        // calculate texture scale based on building width
-        float tex_scale_horizontal = building_width / 10.0f; // one texture repeat per 10 meters
-        float tex_scale_vertical = wall_height / 5.0f;       // one texture repeat per 5 meters of height
+        // calculate texture scale based on building dimensions
+        // - scales texture to maintain consistent appearance regardless of building size
+        // - larger buildings use more texture repetitions
+        float tex_scale_horizontal = building_width / 10.0f;
+        float tex_scale_vertical = wall_height / 5.0f;
+        
+        // generate wall geometry
         for (int j = 0; j < building.vertex_count; j++) {
             int next_idx = (j + 1) % building.vertex_count;
             glm::vec3 bottom1 = building.vertices[j];
@@ -122,75 +130,88 @@ void Renderer3D::draw_buildings() {
             glm::vec3 top1(bottom1.x, wall_height, bottom1.z);
             glm::vec3 top2(bottom2.x, wall_height, bottom2.z);
             
-            // calculate texture scaling
+            // calculate texture coordinates based on wall dimensions
             float segment_length = glm::distance(glm::vec2(bottom1.x, bottom1.z), glm::vec2(bottom2.x, bottom2.z));
             float u_scale = segment_length / TEXTURE_SCALE;
             float v_scale = wall_height / (TEXTURE_SCALE / 2);
             
-            // first triangle: bottom1, bottom2, top2
+            // create first triangle (bottom1, bottom2, top2)
             wall_vertices.insert(wall_vertices.end(), {bottom1.x, bottom1.y, bottom1.z, bottom2.x, bottom2.y, bottom2.z, top2.x, top2.y, top2.z});
             wall_tex_coords.insert(wall_tex_coords.end(), {0.0f, 0.0f, u_scale, 0.0f, u_scale, v_scale});
             
-            // second triangle: bottom1, top2, top1
+            // create second triangle (bottom1, top2, top1)
             wall_vertices.insert(wall_vertices.end(), {bottom1.x, bottom1.y, bottom1.z, top2.x, top2.y, top2.z, top1.x, top1.y, top1.z});
             wall_tex_coords.insert(wall_tex_coords.end(), {0.0f, 0.0f, u_scale, v_scale, 0.0f, v_scale});
             
-            // calculate normal vector for this wall segment
+            // calculate wall normal vector (perpendicular to wall)
+            // - used for lighting calculations
+            // - consistent for both triangles in this wall segment
             glm::vec3 normal = glm::normalize(glm::cross(bottom2 - bottom1, top2 - bottom1));
             for (int k = 0; k < 6; k++) wall_normals.insert(wall_normals.end(), {normal.x, normal.y, normal.z});
         } 
         
-        // set building color based on height, but with more stable calculation
+        // set building color based on height
+        // - taller buildings have slightly different color
+        // - provides visual variation in the scene
         float height_factor = glm::clamp(building.height / 100.0f, 0.0f, 1.0f);
         glm::vec3 building_color = glm::mix(glm::vec3(0.95f, 0.9f, 0.8f), glm::vec3(0.9f, 0.9f, 0.95f), height_factor);
         glUniform3fv(glGetUniformLocation(phong_shader_program, "objectColor"), 1, glm::value_ptr(building_color));
 
-        // position attribute
-        // glBindBuffer selects which buffer to work with - containers in the gpu that hold data
-        // glBufferData - uploads data from the cpu to the gpu
-        // how to interpret data in the buffer - layout of the data
-        // activate the vertex attribute
+        // upload position data to gpu
+        // - buildings use dedicated vao/vbo for geometry
+        // - vao stores complete vertex attribute configuration
+        // - vbo stores actual vertex data
         glBindVertexArray(building_vao);
         glBindBuffer(GL_ARRAY_BUFFER, building_vbo_position);
         glBufferData(GL_ARRAY_BUFFER, wall_vertices.size() * sizeof(float), wall_vertices.data(), GL_DYNAMIC_DRAW);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
         
-        // normal attribute
+        // upload normal data to gpu
+        // - normals used for lighting calculations
+        // - each vertex has a corresponding normal vector
         glBindBuffer(GL_ARRAY_BUFFER, building_vbo_normal);
         glBufferData(GL_ARRAY_BUFFER, wall_normals.size() * sizeof(float), wall_normals.data(), GL_DYNAMIC_DRAW);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(1);
         
-        // texture coordinate attribute
+        // upload texture coordinate data to gpu
+        // - tex coords map image textures onto building surfaces
+        // - each vertex has a corresponding uv coordinate
         glBindBuffer(GL_ARRAY_BUFFER, building_vbo_texcoord);
         glBufferData(GL_ARRAY_BUFFER, wall_tex_coords.size() * sizeof(float), wall_tex_coords.data(), GL_DYNAMIC_DRAW);
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(2);
         
-        // set texture uniforms
+        // set texture sampler uniforms
+        // - tells shader which texture unit to use for each sampler
         glUniform1i(glGetUniformLocation(phong_shader_program, "wallTexture"), 0);
         glUniform1i(glGetUniformLocation(phong_shader_program, "windowTexture"), 1);
         
-        // set use windows flag based on building height
+        // enable windows based on building height
+        // - taller buildings have window textures
+        // - shorter buildings have plain concrete
         glUniform1i(glGetUniformLocation(phong_shader_program, "useWindows"), building.height > 10.0f ? 1 : 0);
         
-        // set window parameters
-        float windowDensity = glm::clamp(building.height / 50.0f, 0.2f, 0.8f); // more windows on taller buildings
+        // set window density based on building height
+        // - taller buildings have more windows
+        // - provides visual variation in the scene
+        float windowDensity = glm::clamp(building.height / 50.0f, 0.2f, 0.8f);
         glUniform1f(glGetUniformLocation(phong_shader_program, "windowDensity"), windowDensity);
         
-        // draw the building walls
-        // takes the data set up, send it through graphics pipeline, draw triangle using every group of 3 vertices, and process al lvertices
+        // execute draw call for walls
+        // - GL_TRIANGLES - interprets vertices as individual triangles (3 per triangle)
+        // - 0 - starting vertex index
+        // - wall_vertices.size() / 3 - number of vertices to draw
         glDrawArrays(GL_TRIANGLES, 0, wall_vertices.size() / 3);
         
-        // draw building roof
+        // add roof if building has one
         if (building.has_roof) {
-            // draw the roof with different texture and color
             draw_building_roof(building);
         }
     }
     
-    // disable polygon offset
+    // restore opengl state
     glDisable(GL_POLYGON_OFFSET_FILL);
 }
 
@@ -737,6 +758,117 @@ void Renderer3D::draw_natural_features() {
         std::cerr << "Error in draw_natural_features: " << e.what() << std::endl;
     }
 }
+
+// render greenspace with darker textured appearance
+void Renderer3D::render_darker_greenspace(const natural_feature& feature) {
+    glUseProgram(phong_shader_program);
+    
+    // setup matrices for greenspace rendering
+    glm::mat4 model = glm::mat4(1.0f);
+    glm::mat4 view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
+    glm::mat4 projection = glm::perspective(glm::radians(FOV_DEGREES), ASPECT_RATIO, NEAR_PLANE, FAR_PLANE);
+    
+    glUniformMatrix4fv(glGetUniformLocation(phong_shader_program, "model"), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(glGetUniformLocation(phong_shader_program, "view"), 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(phong_shader_program, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    
+    // set lighting parameters
+    glUniform3fv(glGetUniformLocation(phong_shader_program, "viewPos"), 1, glm::value_ptr(camera_pos));
+    glUniform3fv(glGetUniformLocation(phong_shader_program, "lightPos"), 1, glm::value_ptr(light_position));
+    glUniform3fv(glGetUniformLocation(phong_shader_program, "lightColor"), 1, glm::value_ptr(light_color));
+    
+    // bind grass texture
+    glActiveTexture(GL_TEXTURE0);  // activate texture unit 0
+    glBindTexture(GL_TEXTURE_2D, grass_texture);  // bind grass texture to active unit
+    glUniform1i(glGetUniformLocation(phong_shader_program, "mainTexture"), 0);  // tell shader to use texture unit 0
+    glUniform1i(glGetUniformLocation(phong_shader_program, "useTexture"), 1);   // enable texture usage
+    glUniform1i(glGetUniformLocation(phong_shader_program, "useWindows"), 0);   // disable window effects
+    
+    // create darker greenspace tint
+    glm::vec3 darker_green = glm::vec3(0.6f, 0.7f, 0.5f);
+    glUniform3fv(glGetUniformLocation(phong_shader_program, "objectColor"), 1, glm::value_ptr(darker_green));
+    
+    // generate greenspace mesh
+    std::vector<float> vertices, normals, tex_coords;
+    glm::vec3 centroid = feature.centroid;
+    centroid.y = feature.elevation + 0.05f;  // slightly above terrain
+    
+    // triangulate from centroid
+    for (int j = 0; j < feature.vertex_count; j++) {
+        int next_j = (j + 1) % feature.vertex_count;
+        glm::vec3 v1 = feature.vertices[j];
+        glm::vec3 v2 = feature.vertices[next_j];
+        
+        // elevate to prevent z-fighting
+        v1.y = v2.y = feature.elevation + 0.05f;
+        
+        // add triangle vertices
+        vertices.insert(vertices.end(), {centroid.x, centroid.y, centroid.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z});
+        
+        // calculate texture coordinates for tiling
+        tex_coords.insert(tex_coords.end(), {
+            centroid.x * 0.05f, centroid.z * 0.05f,
+            v1.x * 0.05f, v1.z * 0.05f,
+            v2.x * 0.05f, v2.z * 0.05f
+        });
+        
+        // add upward-facing normals
+        for (int k = 0; k < 3; k++) normals.insert(normals.end(), {0.0f, 1.0f, 0.0f});
+    }
+    
+    // create VAO and buffers for greenspace
+    GLuint greenspace_vao, vbo_position, vbo_normal, vbo_texcoord;
+    glGenVertexArrays(1, &greenspace_vao);
+    glGenBuffers(1, &vbo_position);
+    glGenBuffers(1, &vbo_normal);
+    glGenBuffers(1, &vbo_texcoord);
+    
+    glBindVertexArray(greenspace_vao);
+    
+    // configure position attribute
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // configure normal attribute
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_normal);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(float), normals.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    
+    // configure texture coordinate attribute
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_texcoord);
+    glBufferData(GL_ARRAY_BUFFER, tex_coords.size() * sizeof(float), tex_coords.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(2);
+    
+    // set material properties for matte appearance
+    glUniform1f(glGetUniformLocation(phong_shader_program, "ambient"), 0.4f);
+    glUniform1f(glGetUniformLocation(phong_shader_program, "diffuse"), 0.6f);
+    glUniform1f(glGetUniformLocation(phong_shader_program, "specular"), 0.0f);  // no specular for grass
+    glUniform1f(glGetUniformLocation(phong_shader_program, "shininess"), 1.0f);
+    
+    // enable polygon offset to prevent z-fighting
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-0.5f, -0.5f);
+    
+    // draw greenspace
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 3);
+    
+    // cleanup and reset state
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glDeleteVertexArrays(1, &greenspace_vao);
+    glDeleteBuffers(1, &vbo_position);
+    glDeleteBuffers(1, &vbo_normal);
+    glDeleteBuffers(1, &vbo_texcoord);
+    
+    // add trees to greenspace if needed
+    add_trees_to_greenspace(feature);
+}
+
+// add trees to greenspace features for visual enhancement
+void Renderer3D::add_trees_to_greenspace(const natural_feature& feature) {
     // count existing trees in area
     int trees_in_greenspace = 0;
     float check_radius = TREE_CHECK_RADIUS;

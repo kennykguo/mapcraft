@@ -977,47 +977,138 @@ void Renderer3D::setup_shaders() {
 }
 
 // Compile individual shader
+/**
+ * Compiles a GLSL shader from source code
+ * 
+ * This function demonstrates the OpenGL shader compilation process:
+ * 1. Create a shader object of the specified type
+ * 2. Attach source code to the shader
+ * 3. Compile the shader
+ * 4. Check for compilation errors
+ * 
+ * OpenGL shader types include:
+ * - GL_VERTEX_SHADER: Processes each vertex position/attribute
+ * - GL_FRAGMENT_SHADER: Processes each pixel (fragment) to determine color
+ * - GL_GEOMETRY_SHADER: Optional shader that processes primitives
+ * - GL_TESS_CONTROL_SHADER: Controls tessellation levels
+ * - GL_TESS_EVALUATION_SHADER: Processes tessellated vertices
+ * 
+ * @param type GLenum specifying shader type (GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, etc.)
+ * @param source C-string containing GLSL shader source code
+ * @return GLuint handle to the compiled shader object
+ * @throws std::runtime_error if compilation fails
+ */
 GLuint Renderer3D::compile_shader(GLenum type, const char* source) {
+    // glCreateShader - creates empty shader object of specified type
+    // - takes shader type enum (vertex, fragment, etc.)
+    // - returns handle (id) for the shader object
+    // - returns 0 if creation fails
     GLuint shader = glCreateShader(type);
+    
+    // glShaderSource - sets the source code in a shader
+    // - shader - handle to target shader object
+    // - 1 - number of strings in the source array
+    // - &source - array of source code strings
+    // - nullptr - array of string lengths (null = null-terminated)
     glShaderSource(shader, 1, &source, nullptr);
+    
+    // glCompileShader - compiles the source code in a shader object
+    // - compiles glsl code into gpu instructions
+    // - operates on currently bound shader
+    // - compilation errors checked with glGetShaderiv
     glCompileShader(shader);
     
-    // Check for compilation errors
+    // check compilation status
+    // - glGetShaderiv retrieves shader parameters
+    // - GL_COMPILE_STATUS returns compilation success/failure
+    // - success will be GL_TRUE if compilation succeeded
     GLint success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success) {
+        // get error information if compilation failed
+        // - glGetShaderInfoLog retrieves compiler error messages
+        // - 512 - maximum length of error message to retrieve
+        // - nullptr - actual length not needed
+        // - info_log - buffer to store error message
         char info_log[512];
         glGetShaderInfoLog(shader, 512, nullptr, info_log);
-        std::cerr << "Shader compilation failed: " << info_log << std::endl;
-        throw std::runtime_error("Shader compilation failed");
+        std::cerr << "shader compilation failed: " << info_log << std::endl;
+        throw std::runtime_error("shader compilation failed");
     }
     
     return shader;
 }
 
 // Create shader program from vertex and fragment sources
+/**
+ * Creates a complete shader program from vertex and fragment shader sources
+ * 
+ * This function demonstrates the OpenGL shader program creation process:
+ * 1. Compile individual vertex and fragment shaders
+ * 2. Create a program object
+ * 3. Attach shaders to the program
+ * 4. Link the program
+ * 5. Check for linking errors
+ * 6. Clean up individual shaders
+ * 
+ * Shader programs in OpenGL:
+ * - Combine multiple shader stages into a pipeline
+ * - Allow data to flow between shader stages
+ * - Define the complete rendering process
+ * 
+ * @param vertex_source Source code for the vertex shader
+ * @param fragment_source Source code for the fragment shader
+ * @return GLuint handle to the linked shader program
+ * @throws std::runtime_error if compilation or linking fails
+ */
 GLuint Renderer3D::create_shader_program(const char* vertex_source, const char* fragment_source) {
-    // Compile shaders
+    // compile individual shaders
+    // - vertex shader processes each vertex position/attributes 
+    // - fragment shader determines pixel colors
     GLuint vertex = compile_shader(GL_VERTEX_SHADER, vertex_source);
     GLuint fragment = compile_shader(GL_FRAGMENT_SHADER, fragment_source);
     
-    // Create program and link shaders
+    // glCreateProgram - creates empty program container
+    // - returns handle to new program object
+    // - program objects link multiple shaders together
+    // - returns 0 if creation fails
     GLuint program = glCreateProgram();
+    
+    // glAttachShader - connects shaders to program
+    // - program - target program handle
+    // - vertex/fragment - compiled shader handles
+    // - defines which shader stages will be used
     glAttachShader(program, vertex);
     glAttachShader(program, fragment);
+    
+    // glLinkProgram - links all attached shaders
+    // - resolves all interface variables between stages
+    // - validates compatibility between shader stages
+    // - creates executable that runs on the gpu
     glLinkProgram(program);
     
-    // Check for linking errors
+    // check for linking errors
+    // - glGetProgramiv retrieves program parameters
+    // - GL_LINK_STATUS returns linking success/failure
+    // - success will be GL_TRUE if linking succeeded
     GLint success;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success) {
+        // get error information if linking failed
+        // - glGetProgramInfoLog retrieves linker error messages
+        // - 512 - maximum length of error message to retrieve
+        // - nullptr - actual length not needed
+        // - info_log - buffer to store error message
         char info_log[512];
         glGetProgramInfoLog(program, 512, nullptr, info_log);
-        std::cerr << "Program linking failed: " << info_log << std::endl;
-        throw std::runtime_error("Program linking failed");
+        std::cerr << "program linking failed: " << info_log << std::endl;
+        throw std::runtime_error("program linking failed");
     }
     
-    // Cleanup
+    // cleanup individual shaders
+    // - glDeleteShader frees gpu resources
+    // - shaders are no longer needed after linking
+    // - doesn't affect the program that has them attached
     glDeleteShader(vertex);
     glDeleteShader(fragment);
     

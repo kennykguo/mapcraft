@@ -1,6 +1,81 @@
 #ifndef _3D_RENDERING_H_
 #define _3D_RENDERING_H_
 
+/**
+ * OpenGL Core API Documentation
+ * -----------------------------
+ * 
+ * Key OpenGL Types:
+ * - GLuint:  Unsigned integer, used for object handles/IDs (buffers, textures, etc.)
+ * - GLint:   Signed integer, used for shader parameters and coordinates
+ * - GLenum:  Enumeration type, used for constants that control OpenGL behavior
+ * - GLfloat: Float type, used for coordinates, colors, etc.
+ * - GLboolean: Boolean type, used for flags
+ * 
+ * Core OpenGL Objects:
+ * - Vertex Array Objects (VAO): Store vertex attribute configurations
+ * - Vertex Buffer Objects (VBO): Store vertex data (positions, normals, etc.)
+ * - Element Buffer Objects (EBO): Store indices for indexed rendering
+ * - Textures: Store image data for rendering
+ * - Framebuffers: Custom render targets
+ * - Shaders: Programs that run on the GPU
+ * 
+ * Render Pipeline:
+ * 1. CPU prepares data and sends to GPU
+ * 2. Vertex Shader: Transforms vertices
+ * 3. Tessellation Control Shader (optional): Controls tessellation
+ * 4. Tessellation Evaluation Shader (optional): Generates new vertices
+ * 5. Geometry Shader (optional): Creates/modifies primitives
+ * 6. Fragment Shader: Colors pixels
+ * 7. Output merging: Depth testing, blending, etc.
+ * 
+ * Common Function Patterns:
+ * - gl[Create/Generate][Object] - Creates OpenGL objects
+ * - glBind[Object] - Makes an object active
+ * - glDelete[Object] - Destroys OpenGL objects
+ * - glUniform[Type] - Sets shader variables
+ * - glDraw[Arrays/Elements] - Executes the rendering pipeline
+ * 
+ * Shader Functions:
+ * - glCreateShader(): Creates a shader object
+ * - glShaderSource(): Sets shader source code
+ * - glCompileShader(): Compiles shader source
+ * - glCreateProgram(): Creates a shader program
+ * - glAttachShader(): Attaches shader to program
+ * - glLinkProgram(): Links shader program
+ * - glUseProgram(): Activates shader program
+ * 
+ * Buffer Functions:
+ * - glGenBuffers(): Creates buffer objects
+ * - glBindBuffer(): Selects a buffer for operations
+ * - glBufferData(): Uploads data to buffer
+ * - glVertexAttribPointer(): Defines vertex attribute layout
+ * - glEnableVertexAttribArray(): Enables vertex attribute
+ * 
+ * Texture Functions:
+ * - glGenTextures(): Creates texture objects
+ * - glBindTexture(): Selects texture for operations
+ * - glTexImage2D(): Uploads texture data
+ * - glTexParameteri(): Sets texture parameters
+ * 
+ * Drawing Functions:
+ * - glDrawArrays(): Draws primitives from array data
+ * - glDrawElements(): Draws primitives from indexed data
+ * 
+ * Uniform Functions:
+ * - glGetUniformLocation(): Gets uniform variable location
+ * - glUniform*(): Sets uniform variable values
+ * 
+ * State Functions:
+ * - glEnable()/glDisable(): Enables/disables capabilities
+ * - glBlendFunc(): Sets blending function
+ * - glDepthFunc(): Sets depth test function
+ */
+ 
+
+// GLAD for loading OpenGL functions
+// GLFW for window creation and input handling
+// GLM for 3D math operations
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp> 
@@ -120,6 +195,7 @@ struct feature_data {
   bool has_roof;
   color rgba;
 };
+
 
 
 
@@ -393,38 +469,38 @@ private:
     // CUDA DATA
     //==========================================================================
     // building data on GPU
-    gpu_building_data* d_building_data = nullptr;  // device pointer to building data
-    float3* d_building_vertices = nullptr;         // device pointer to building vertices
-    int building_count = 0;                        // number of buildings
+    gpu_building_data* d_building_data = nullptr; // device pointer to building data
+    float3* d_building_vertices = nullptr; // device pointer to building vertices
+    int building_count = 0; // number of buildings
     
     // road data on GPU
-    gpu_road_data* d_road_data = nullptr;          // device pointer to road data
-    float3* d_road_vertices = nullptr;             // device pointer to road vertices
-    int road_count = 0;                            // number of roads
+    gpu_road_data* d_road_data = nullptr; // device pointer to road data
+    float3* d_road_vertices = nullptr; // device pointer to road vertices
+    int road_count = 0; // number of roads
     
     // natural feature data on GPU
-    gpu_natural_feature_data* d_natural_feature_data = nullptr;  // device pointer to natural feature data
-    float3* d_natural_feature_vertices = nullptr;                // device pointer to natural feature vertices
-    int natural_feature_count = 0;                               // number of natural features
+    gpu_natural_feature_data* d_natural_feature_data = nullptr; // device pointer to natural feature data
+    float3* d_natural_feature_vertices = nullptr; // device pointer to natural feature vertices
+    int natural_feature_count = 0; // number of natural features
     
     // visibility data for culling
-    int* d_visible_building_indices = nullptr;     // indices of visible buildings
-    int* d_visible_building_count = nullptr;       // number of visible buildings
-    int visible_building_count = 0;                // host copy of visible building count
+    int* d_visible_building_indices = nullptr; // indices of visible buildings
+    int* d_visible_building_count = nullptr; // number of visible buildings
+    int visible_building_count = 0; // host copy of visible building count
     
-    int* d_visible_road_indices = nullptr;         // indices of visible roads
-    int* d_visible_road_count = nullptr;           // number of visible roads
-    int visible_road_count = 0;                    // host copy of visible road count
+    int* d_visible_road_indices = nullptr; // indices of visible roads
+    int* d_visible_road_count = nullptr; // number of visible roads
+    int visible_road_count = 0; // host copy of visible road count
     
-    int* d_visible_natural_feature_indices = nullptr;  // indices of visible natural features
-    int* d_visible_natural_feature_count = nullptr;    // number of visible natural features
-    int visible_natural_feature_count = 0;              // host copy of visible natural feature count
+    int* d_visible_natural_feature_indices = nullptr; // indices of visible natural features
+    int* d_visible_natural_feature_count = nullptr; // number of visible natural features
+    int visible_natural_feature_count = 0; // host copy of visible natural feature count
     
     // frustum culling data
-    float4* d_frustum_planes = nullptr;            // frustum planes for culling
+    float4* d_frustum_planes = nullptr; // frustum planes for culling
     
     // spatial grid for acceleration
-    cuda_grid d_grid;                              // spatial grid on device
+    cuda_grid d_grid; // spatial grid on device
 
     //==========================================================================
     // INITIALIZATION METHODS

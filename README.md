@@ -2,7 +2,9 @@
 <img src="https://github.com/user-attachments/assets/20941666-3676-48fa-8216-44b1dca6db26" alt="67207864-5B5A-47B3-A3EE-9E8D63F9667F_1_105_c" />
 
 
-[View video](https://github.com/user-attachments/assets/b290f542-c6c9-409a-b17a-c112a2dcafd0)
+
+https://github.com/user-attachments/assets/42e7bc21-38d1-4175-8c19-f5663a72ab97
+
 
 
 

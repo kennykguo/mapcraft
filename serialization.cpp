@@ -224,99 +224,10 @@ void load_serialized_data(const latlon& ref_latlon) {
     std::cout << "Recalculating 3D coordinates with new reference point..." << std::endl;
     
     // ---------------------------------------------------------------------------
-    // Process features with cleaned up height sampling
+    // Process features - NO RANDOM MODIFICATIONS
     // ---------------------------------------------------------------------------
     std::cout << "Processing " << graphics_feature_data.size() << " features..." << std::endl;
-    
-    // Initialize random number generator
-    std::mt19937 rng(12345);
-    std::uniform_real_distribution<float> height_dist(10.0f, 100.0f);
-    std::uniform_real_distribution<float> tall_dist(50.0f, 150.0f);
-    std::uniform_real_distribution<float> prob_dist(0.0f, 1.0f);
 
-    int building_count = 0;
-    int randomized_count = 0;
-    
-    // Parameters for height sampling
-    const float LARGE_BUILDING_PROBABILITY = 0.1f;  // 15% chance for tall buildings
-    const float RANDOMIZE_PROBABILITY = 0.1f;        // 80% of buildings get randomized heights
-
-    for (auto& feature : graphics_feature_data) {
-        if (feature.type == "building" || feature.type == "BUILDING") {
-            building_count++;
-            
-            // Randomly assign building height based on probability
-            if (prob_dist(rng) < RANDOMIZE_PROBABILITY) {
-                // Check if this should be a tall building
-                if (prob_dist(rng) < LARGE_BUILDING_PROBABILITY) {
-                    feature.height = tall_dist(rng);
-                    feature.is_skyscraper = true;
-                } else {
-                    feature.height = height_dist(rng);
-                    feature.is_skyscraper = (feature.height >= 50.0f);
-                }
-                randomized_count++;
-            } else {
-                // Keep original height or set default
-                if (feature.height <= 5.0f) {
-                    feature.height = 15.0f;  // Default for buildings without data
-                }
-                feature.is_skyscraper = (feature.height >= 50.0f);
-            }
-            
-            // Set other building properties
-            feature.roof_type = feature.index % 3;
-            feature.has_roof = true;
-        }
-    }
-
-    std::cout << "\n===== PROCESSING SUMMARY =====" << std::endl;
-    std::cout << "Total buildings: " << building_count << std::endl;
-    std::cout << "Buildings randomized: " << randomized_count << std::endl;
-    
-    // Verify height distribution
-    std::map<int, int> height_distribution;
-    for (const auto& feature : graphics_feature_data) {
-        if (feature.type == "building" || feature.type == "BUILDING") {
-            int height_bucket = static_cast<int>(feature.height / 10) * 10;
-            height_distribution[height_bucket]++;
-        }
-    }
-
-    std::cout << "\n===== HEIGHT DISTRIBUTION =====" << std::endl;
-    for (const auto& pair : height_distribution) {
-        std::cout << pair.first << "m-" << (pair.first + 10) << "m: " 
-                << pair.second << " buildings" << std::endl;
-    }
-    
-    // Check building heights after processing
-    std::cout << "\nFirst 10 buildings after processing:" << std::endl;
-    int debug_count = 0;
-    for (const auto& feature : graphics_feature_data) {
-        if ((feature.type == "building" || feature.type == "BUILDING") && debug_count < 10) {
-            std::cout << "Building " << debug_count << " (index " << feature.index << "): "
-                    << "height=" << feature.height << ", name=" << feature.name << std::endl;
-            debug_count++;
-        }
-    }
-
-    for (const auto& feature : graphics_feature_data) {
-        if (feature.type == "building" || feature.type == "BUILDING") {
-            int height_bucket = static_cast<int>(feature.height / 10) * 10;
-            height_distribution[height_bucket]++;
-        }
-    }
-
-    std::cout << "\n===== HEIGHT DISTRIBUTION =====" << std::endl;
-    if (height_distribution.empty()) {
-        std::cout << "WARNING: No buildings found in height distribution!" << std::endl;
-    } else {
-        for (const auto& pair : height_distribution) {
-            std::cout << pair.first << "m-" << (pair.first + 10) << "m: " 
-                    << pair.second << " buildings" << std::endl;
-        }
-    }
-    
     std::cout << "Converting features to 3D coordinates..." << std::endl;
 
     for (auto& feature : graphics_feature_data) {
@@ -332,14 +243,14 @@ void load_serialized_data(const latlon& ref_latlon) {
             // Convert to 3D
             glm::vec3 point3d = latlon_to_3d(point_latlon, reference_point);
             
-            // Apply elevation
+            // Apply elevation WITHOUT MODIFICATIONS
             if (feature.type == "building" || feature.type == "BUILDING") {
-                // Buildings start at ground level
+                // Buildings start at ground level - use original height data
                 point3d.y = DEFAULT_ELEVATION;
             } else if (feature.type == "water") {
                 point3d.y = WATER_ELEVATION;
             } else {
-                // Other features use their defined height or default
+                // Other features use their original height or default
                 point3d.y = (feature.height > 0) ? feature.height : DEFAULT_ELEVATION;
             }
             
@@ -376,7 +287,7 @@ void load_serialized_data(const latlon& ref_latlon) {
             
             feature.bounding_radius = std::sqrt(max_dist_sq);
             
-            // For buildings, ensure bounding radius includes height
+            // For buildings, ensure bounding radius includes height (use original height)
             if (feature.type == "building" || feature.type == "BUILDING") {
                 float height_component = feature.height / 2.0f;
                 feature.bounding_radius = std::sqrt(max_dist_sq + height_component * height_component);
@@ -384,30 +295,13 @@ void load_serialized_data(const latlon& ref_latlon) {
         }
     }
 
-    // Then add debug output to verify conversion
-    std::cout << "\nFirst few features after 3D conversion:" << std::endl;
-    int feature_debug_count = 0;
-    for (const auto& feature : graphics_feature_data) {
-        if (feature.type == "building" || feature.type == "BUILDING") {
-            std::cout << "Building " << feature_debug_count << " (index " << feature.index << "):" << std::endl;
-            std::cout << "  Height: " << feature.height << "m" << std::endl;
-            std::cout << "  3D Centroid: (" << feature.centroid3d.x << ", " 
-                    << feature.centroid3d.y << ", " << feature.centroid3d.z << ")" << std::endl;
-            std::cout << "  Bounding radius: " << feature.bounding_radius << std::endl;
-            std::cout << "  Points3d count: " << feature.points3d.size() << std::endl;
-            feature_debug_count++;
-            if (feature_debug_count >= 5) break;  // Show first 5 buildings
-        }
-    }
-
-
     // ---------------------------------------------------------------------------
     // Process street segments with correct coordinate conversion
     // ---------------------------------------------------------------------------
     std::cout << "Processing " << graphics_street_segment_data.size() << " street segments..." << std::endl;
     
     for (auto& segment : graphics_street_segment_data) {
-        // Determine street width based on highway type
+        // Determine street width based on highway type - NO MODIFICATIONS TO ORIGINAL DATA
         segment.width = 8.0f; // DEFAULT_STREET_WIDTH
         
         // Adjust width based on highway type
@@ -469,15 +363,14 @@ void load_serialized_data(const latlon& ref_latlon) {
         }
     }
     
-    std::cout << "Finished recalculating 3D coordinates:" << std::endl;
-    std::cout << "  " << graphics_feature_data.size() << " features processed" << std::endl;
-    std::cout << "  " << building_count << " buildings processed" << std::endl;
-    std::cout << "  " << graphics_street_segment_data.size() << " street segments processed" << std::endl;
+    std::cout << "Finished loading and converting coordinates:" << std::endl;
+    std::cout << "  " << graphics_feature_data.size() << " features loaded" << std::endl;
+    std::cout << "  " << graphics_street_segment_data.size() << " street segments loaded" << std::endl;
     
     // Debug output
     if (!graphics_street_segment_data.empty()) {
         const auto& seg = graphics_street_segment_data[0];
-        std::cout << "\n=== FIRST STREET SEGMENT (AFTER RECALCULATION) ===\n";
+        std::cout << "\n=== FIRST STREET SEGMENT (ORIGINAL DATA) ===\n";
         if (!seg.points3d.empty()) {
             std::cout << "First 3D Point: " 
                       << seg.points3d[0].x << ", " 
@@ -494,7 +387,7 @@ void load_serialized_data(const latlon& ref_latlon) {
         // Find first building
         for (const auto& feature : graphics_feature_data) {
             if (feature.type == "building" || feature.type == "BUILDING") {
-                std::cout << "\n=== FIRST BUILDING (AFTER RECALCULATION) ===\n";
+                std::cout << "\n=== FIRST BUILDING (ORIGINAL DATA) ===\n";
                 std::cout << "Type: " << feature.type << "\n";
                 if (!feature.points3d.empty()) {
                     std::cout << "First 3D Point: " 
@@ -506,7 +399,7 @@ void load_serialized_data(const latlon& ref_latlon) {
                         << feature.centroid3d.x << ", "
                         << feature.centroid3d.y << ", "
                         << feature.centroid3d.z << "\n";
-                std::cout << "Height: " << feature.height << "m\n";
+                std::cout << "Original Height: " << feature.height << "m\n";
                 break;
             }
         }

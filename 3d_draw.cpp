@@ -13,7 +13,6 @@ const float TEXTURE_SCALE = 10.0f;
 const int ANTENNA_HEIGHT_THRESHOLD = 80;
 const int ANTENNA_SEGMENTS = 8;
 const float ANTENNA_BASE_RADIUS = 1.0f;
-const float ROAD_ELEVATION = 0.5f;
 const float MIN_ROAD_WIDTH = 2.0f;
 const int WATER_GRID_RESOLUTION = 30;
 const float TREE_CHECK_RADIUS = 50.0f;
@@ -51,7 +50,7 @@ void Renderer3D::draw_buildings() {
     // - GL_POLYGON_OFFSET_FILL - prevents z-fighting by offsetting fragment depth
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-0.5f, -0.5f);
+    glPolygonOffset(-5.0f, -5.0f);  // Much larger offset to eliminate z-fighting completely
     
     // activate phong shader program
     // - provides lighting model with ambient, diffuse, and specular components
@@ -122,13 +121,27 @@ void Renderer3D::draw_buildings() {
         float tex_scale_horizontal = building_width / 10.0f;
         float tex_scale_vertical = wall_height / 5.0f;
         
-        // generate wall geometry
+        // generate wall geometry with z-fighting prevention
         for (int j = 0; j < building.vertex_count; j++) {
             int next_idx = (j + 1) % building.vertex_count;
             glm::vec3 bottom1 = building.vertices[j];
             glm::vec3 bottom2 = building.vertices[next_idx];
             glm::vec3 top1(bottom1.x, wall_height, bottom1.z);
             glm::vec3 top2(bottom2.x, wall_height, bottom2.z);
+            
+            // calculate wall normal for offset direction
+            glm::vec3 wall_dir = glm::normalize(bottom2 - bottom1);
+            glm::vec3 wall_normal = glm::normalize(glm::cross(wall_dir, glm::vec3(0.0f, 1.0f, 0.0f)));
+            
+            // apply larger offset to prevent z-fighting at corners (increased for stability)
+            float wall_offset = 0.1f; // Increased from 0.01f for better separation
+            glm::vec3 offset = wall_normal * wall_offset;
+            
+            // apply offset to all wall vertices
+            bottom1 += offset;
+            bottom2 += offset;
+            top1 += offset;
+            top2 += offset;
             
             // calculate texture coordinates based on wall dimensions
             float segment_length = glm::distance(glm::vec2(bottom1.x, bottom1.z), glm::vec2(bottom2.x, bottom2.z));
@@ -146,8 +159,8 @@ void Renderer3D::draw_buildings() {
             // calculate wall normal vector (perpendicular to wall)
             // - used for lighting calculations
             // - consistent for both triangles in this wall segment
-            glm::vec3 normal = glm::normalize(glm::cross(bottom2 - bottom1, top2 - bottom1));
-            for (int k = 0; k < 6; k++) wall_normals.insert(wall_normals.end(), {normal.x, normal.y, normal.z});
+            glm::vec3 lighting_normal = glm::normalize(glm::cross(bottom2 - bottom1, top2 - bottom1));
+            for (int k = 0; k < 6; k++) wall_normals.insert(wall_normals.end(), {lighting_normal.x, lighting_normal.y, lighting_normal.z});
         } 
         
         // set building color based on height
@@ -557,7 +570,7 @@ void Renderer3D::draw_roads() {
     
     // enable polygon offset for road layering
     glEnable(GL_POLYGON_OFFSET_FILL);
-    glPolygonOffset(-1.0f, -1.0f);
+    glPolygonOffset(-3.0f, -3.0f); // Increased from -1.0f for better separation from terrain
     
     // set transformation matrices
     glm::mat4 model = glm::mat4(1.0f);
@@ -752,7 +765,8 @@ void Renderer3D::draw_natural_features() {
             int feature_idx = h_visible_indices[i];
             if (feature_idx < 0 || feature_idx >= natural_feature_count) continue;
             const natural_feature& feature = natural_features[feature_idx];
-            draw_water_feature(feature);
+            // Temporarily disable water rendering to troubleshoot other issues
+            // draw_water_feature(feature);
         }
     } catch (const std::exception& e) {
         std::cerr << "Error in draw_natural_features: " << e.what() << std::endl;

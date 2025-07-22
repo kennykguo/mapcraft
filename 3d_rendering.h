@@ -101,6 +101,14 @@
 #include "3d_textures.h"
 #include "3d_shaders.h"
 
+// Elevation constants used across multiple files
+const float WATER_ELEVATION = -0.5f;
+const float DEFAULT_ELEVATION = 0.1f;
+const float ROAD_ELEVATION = 0.5f;
+
+// Define which feature types count as natural for landscape rendering
+const std::vector<std::string> natural_types = {"park", "water", "river", "lake", "wood", "grass", "beach"};
+
 // forward declarations for cuda interoperability
 struct float3;
 struct float4;
@@ -404,6 +412,7 @@ private:
     GLuint sky_shader;                  // shader for skybox rendering
     GLuint sky_vao;                     // vertex array for sky
     GLuint sky_vbo;                     // vertex buffer for sky
+    GLuint sky_ebo;                     // element buffer for sky indices
     void init_sky();                    // initializes sky rendering resources
     void render_sky();                  // renders the skybox
     

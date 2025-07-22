@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "3d_rendering.h"
+#include "3d_rendering.cpp"
 #include <iostream>
 
 int main(void){

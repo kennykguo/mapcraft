@@ -23,13 +23,19 @@ __device__ float signed_distance(const float3& point, const float4& plane) {
     return dot(make_float3(plane.x, plane.y, plane.z), point) + plane.w;
 }
 
-// check if a sphere is visible in the frustum - core culling test
+// check if a sphere is visible in the frustum - core culling test with tolerance
 __device__ bool is_sphere_visible(const float3& center, float radius, const float4* planes) {
+    // Ensure minimum radius to prevent precision issues
+    radius = fmaxf(radius, 1.0f);
+    
+    // Add very large tolerance to prevent aggressive culling at frustum edges (maximum stability)
+    float tolerance = radius * 0.5f + 5.0f; // 50% of radius plus 5 units for maximum stability
+    
     // test against all 6 frustum planes (left, right, top, bottom, near, far)
     for (int i = 0; i < 6; i++) {
         float distance = signed_distance(center, planes[i]);
-        // if sphere center is farther than radius outside plane, it's invisible
-        if (distance < -radius) {return false;}
+        // if sphere center is farther than radius + tolerance outside plane, it's invisible
+        if (distance < -(radius + tolerance)) {return false;}
     }
     return true; // sphere intersects or is inside all planes
 }
@@ -173,6 +179,12 @@ __global__ void natural_feature_culling_kernel(gpu_natural_feature_data* natural
     
     const gpu_natural_feature_data& feature = natural_feature_data[idx];
     
+    // Ensure minimum radius to prevent precision issues
+    float safe_radius = fmaxf(feature.bounding_radius, 1.0f);
+    
+    // Add very large tolerance to prevent aggressive culling at frustum edges (maximum stability)
+    float tolerance = safe_radius * 0.5f + 5.0f; // 50% of radius plus 5 units for maximum stability
+    
     // perform sphere-frustum intersection test
     bool is_visible = true;
     for (int i = 0; i < 6; i++) {
@@ -180,8 +192,8 @@ __global__ void natural_feature_culling_kernel(gpu_natural_feature_data* natural
         // calculate signed distance from feature center to plane
         float dist = plane.x * feature.centroid.x + plane.y * feature.centroid.y + plane.z * feature.centroid.z + plane.w;
         
-        // if entire sphere is on negative side of plane, it's invisible  
-        if (dist < -feature.bounding_radius) {is_visible = false;break;}
+        // if entire sphere is on negative side of plane (with tolerance), it's invisible  
+        if (dist < -(safe_radius + tolerance)) {is_visible = false;break;}
     }
     
     // atomically add visible features to result list

@@ -152,6 +152,26 @@ void Renderer3D::draw_water_feature(const natural_feature& feature) {
     bool is_water_feature = (feature.type == "lake" || feature.type == "river" || feature.type == "stream");
     if (!is_water_feature) return;
     
+    // check if feature is a closed polygon
+    bool is_closed = false;
+    if (feature.vertex_count >= 3) {
+        glm::vec3 first_vertex = feature.vertices[0];
+        glm::vec3 last_vertex = feature.vertices[feature.vertex_count - 1];
+        float distance = glm::distance(first_vertex, last_vertex);
+        is_closed = (distance < 1.0f); // consider closed if endpoints are within 1 meter
+    }
+    
+    // skip rendering if it's an open feature (like most rivers/streams)
+    if (!is_closed && (feature.type == "river" || feature.type == "stream")) {
+        // TODO: Implement proper river/stream rendering as line strips with width
+        return;
+    }
+    
+    // only render closed water bodies (lakes, closed rivers)
+    if (!is_closed && feature.type != "lake") {
+        return;
+    }
+    
     // activate water shader for realistic water rendering
     glUseProgram(water_shader_program);
     

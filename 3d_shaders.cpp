@@ -570,8 +570,23 @@ const char* sky_vertex_shader = R"glsl(
 #version 330 core
 layout (location = 0) in vec3 aPos;
 
+out vec3 WorldPos;
+
+uniform mat4 view;
+uniform mat4 projection;
+
 void main() {
-    gl_Position = vec4(aPos, 1.0);
+    // Remove translation from view matrix but keep rotation
+    mat4 rotView = mat4(mat3(view));
+    
+    // Transform position but ignore translation
+    vec4 pos = projection * rotView * vec4(aPos, 1.0);
+    
+    // Set z=w to ensure sky is always at far plane
+    gl_Position = pos.xyww;
+    
+    // Pass world position for fragment shader
+    WorldPos = aPos;
 }
 )glsl";
 
@@ -579,13 +594,22 @@ const char* sky_fragment_shader = R"glsl(
 #version 330 core
 out vec4 FragColor;
 
+in vec3 WorldPos;
+
 uniform vec3 bottomColor;
 uniform vec3 topColor;
-uniform float screenHeight;
 
 void main() {
-    float t = gl_FragCoord.y / screenHeight;
+    // Normalize the position vector
+    vec3 direction = normalize(WorldPos);
+    
+    // Calculate gradient based on Y component (up/down)
+    // Y ranges from -1 (looking down) to +1 (looking up)
+    float t = (direction.y + 1.0) * 0.5; // Convert to 0-1 range
+    
+    // Mix colors based on vertical direction
     vec3 skyColor = mix(bottomColor, topColor, t);
+    
     FragColor = vec4(skyColor, 1.0);
 }
 )glsl";

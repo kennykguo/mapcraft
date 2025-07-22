@@ -1,10 +1,4 @@
-#include <3d_rendering.h>
-
-// constant for conversion and distance calculations
-const float WATER_ELEVATION = -0.5f;
-const float DEFAULT_ELEVATION = 0.1f;
-// define which feature types count as natural for landscape rendering
-const std::vector<std::string> natural_types = {"park", "water", "river", "lake", "wood", "grass", "beach"};
+#include "3d_rendering.h"
 
 // load building data from host to device
 void Renderer3D::load_features() {
@@ -20,7 +14,15 @@ void Renderer3D::load_features() {
       if (feature.type == "building") {  // filter for building features only
           // calculate straight-line distance from reference point in the xz plane (ignoring height)
           float distance = glm::distance(glm::vec2(feature.centroid3d.x, feature.centroid3d.z), glm::vec2(reference_3d.x, reference_3d.z));
-          if (distance <= render_radius && feature.points3d.size() > 0) {  // check if building is within render distance and has valid # of points
+          
+          // Add bounding radius to distance calculation to prevent pop-in/pop-out
+          float effective_distance = distance - feature.bounding_radius;
+          
+          // Use a much larger render radius with hysteresis to prevent flickering (increased to 50% for maximum stability)
+          float render_buffer = render_radius * 0.5f; // 50% buffer for maximum stability  
+          float extended_render_radius = render_radius + render_buffer;
+          
+          if (effective_distance <= extended_render_radius && feature.points3d.size() > 0) {  // check if building is within render distance and has valid # of points
                 building building; // create new building structure
                 building.vertex_count = feature.points3d.size(); // set number of vertices
                 building.vertices = new glm::vec3[building.vertex_count]; // allocate array for vertex positions
@@ -58,7 +60,15 @@ void Renderer3D::load_roads() {
   for (const auto& segment : graphics_street_segment_data) {
         // check distance from reference point using 2d projection
         float distance = glm::distance(glm::vec2(segment.centroid3d.x, segment.centroid3d.z), glm::vec2(reference_3d.x, reference_3d.z));
-        if (distance <= render_radius) {  // only load roads within render distance
+        
+        // Add bounding radius to distance calculation to prevent pop-in/pop-out
+        float effective_distance = distance - segment.bounding_radius;
+        
+        // Use a much larger render radius with hysteresis to prevent flickering (increased to 50% for maximum stability)
+        float render_buffer = render_radius * 0.5f; // 50% buffer for maximum stability
+        float extended_render_radius = render_radius + render_buffer;
+        
+        if (effective_distance <= extended_render_radius) {  // only load roads within render distance
             road_segment road;  // create road structure
             road.vertex_count = segment.points3d.size();  // number of points defining the road
             road.vertices = new glm::vec3[road.vertex_count];  // allocate vertex array
@@ -82,7 +92,8 @@ void Renderer3D::load_roads() {
   std::cout << "Loaded " << road_segments.size() << " road segments\n";
 }
 
-// load parks, water bodies, and other natural landscape features
+// load natural features (water bodies, parks, etc.) from feature data
+// converts 2d geographic features into 3d objects that can be rendered
 void Renderer3D::load_natural_features() {
   std::lock_guard<std::mutex> lock(map_data_mutex);  // thread synchronization
   std::cout << "Loading natural features..." << std::endl;
@@ -104,7 +115,14 @@ void Renderer3D::load_natural_features() {
             // calculate distance from reference point
             float distance = glm::distance(glm::vec2(feature.centroid3d.x, feature.centroid3d.z), glm::vec2(reference_3d.x, reference_3d.z));
 
-            if (distance <= render_radius && feature.points3d.size() >= 3) {  // need at least 3 points to form a triangle
+            // Add bounding radius to distance calculation to prevent pop-in/pop-out
+            float effective_distance = distance - feature.bounding_radius;
+            
+            // Use a much larger render radius with hysteresis to prevent flickering (increased to 50% for maximum stability)
+            float render_buffer = render_radius * 0.5f; // 50% buffer for maximum stability
+            float extended_render_radius = render_radius + render_buffer;
+
+            if (effective_distance <= extended_render_radius && feature.points3d.size() >= 3) {  // need at least 3 points to form a triangle
                 natural_feature nf;  // create natural feature structure
                 nf.vertex_count = feature.points3d.size();  // number of boundary vertices
                 nf.vertices = new glm::vec3[nf.vertex_count];  // allocate vertex storage

@@ -159,6 +159,25 @@ void Renderer3D::compute_frustum_planes(glm::vec4* planes) {
 
 // determines which object is visible to the camera and only processes those objects
 void Renderer3D::perform_frustum_culling() {
+    // Add frame-to-frame stability - only re-cull if camera moved significantly
+    static glm::vec3 last_camera_pos = glm::vec3(FLT_MAX);
+    static glm::vec3 last_camera_front = glm::vec3(FLT_MAX);
+    
+    float position_threshold = 5.0f; // Only re-cull if camera moved more than 5 units
+    float direction_threshold = 0.1f; // Only re-cull if camera direction changed significantly
+    
+    float pos_distance = glm::distance(camera_pos, last_camera_pos);
+    float front_distance = glm::distance(camera_front, last_camera_front);
+    
+    // Skip culling if camera hasn't moved much (reduces flickering)
+    if (pos_distance < position_threshold && front_distance < direction_threshold) {
+        return;
+    }
+    
+    // Update last camera state
+    last_camera_pos = camera_pos;
+    last_camera_front = camera_front;
+    
     // compute frustum planes
     glm::vec4 h_frustum_planes[6];
     compute_frustum_planes(h_frustum_planes);

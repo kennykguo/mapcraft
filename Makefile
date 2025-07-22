@@ -7,21 +7,14 @@ MKDIR = mkdir -p
 CONF ?= release
 BUILD_DIR = build/$(CONF)
 
-# source files - need to compile main.cpp aswell as 3d_rendering.cpp, rest will follow
-MAIN_SRCS = main.cpp 3d_rendering.cpp
+# source files - main.cpp includes 3d_rendering.cpp which includes all other files
+MAIN_SRCS = main.cpp
 CUDA_SRCS = cuda_frustum_culling.cu cuda_spatial_grid.cu
-C_SRCS = glad/src/glad.c
-
-# exclude files that are included in 3d_rendering.cpp
-EXCLUDED_SRCS = $(filter-out $(MAIN_SRCS), $(wildcard *.cpp))
-
-# file discovery with exclusions
-CPP_SRCS = $(filter-out $(EXCLUDED_SRCS), $(wildcard *.cpp))
 C_SRCS = glad/src/glad.c
 
 # object files
 OBJS = \
-    $(addprefix $(BUILD_DIR)/, $(CPP_SRCS:.cpp=.o)) \
+    $(addprefix $(BUILD_DIR)/, $(MAIN_SRCS:.cpp=.o)) \
     $(addprefix $(BUILD_DIR)/, $(CUDA_SRCS:.cu=.o)) \
     $(addprefix $(BUILD_DIR)/, $(C_SRCS:.c=.o))
 

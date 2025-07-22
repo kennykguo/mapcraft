@@ -9,7 +9,7 @@ const glm::vec3 INITIAL_CAMERA_UP = glm::vec3(0.0f, 1.0f, 0.0f);
 const float INITIAL_YAW = -90.0f;
 const float INITIAL_PITCH = 0.0f;
 const float INITIAL_FRAME_TIME = 0.0f;
-const float DEFAULT_RENDER_RADIUS = 1600.0f;
+const float DEFAULT_RENDER_RADIUS = 1000.0f;
 const int DEFAULT_MAX_RAIN_PARTICLES = 10000;
 const float DEFAULT_TESSELLATION_LEVEL = 4.0f;
 const int WINDOW_WIDTH = 1024;
@@ -68,6 +68,7 @@ Renderer3D::Renderer3D(const latlon& initial_pos) {
     vbo = 0;
     shader_program = 0;
     max_rain_particles = DEFAULT_MAX_RAIN_PARTICLES; // maximum number of raindrops
+    rain_intensity = DEFAULT_RAIN_INTENSITY; // initialize rain intensity to prevent garbage values
     tessellation_level = DEFAULT_TESSELLATION_LEVEL; // terrain detail level
     std::cout << "initializing 3D Renderer..." << std::endl;
     // debug output - verifies reference point conversion
